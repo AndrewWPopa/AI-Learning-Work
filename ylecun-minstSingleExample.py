@@ -3,11 +3,15 @@ from datasets import load_dataset
 
 ds = load_dataset("ylecun/mnist")
 
+# Note: increasing layer number will cause accuracy to drop to 9.74% (Random)
 input_size   = 784
 hidden_size  = 10
-n_hidden     = 25
+n_hidden     = 2
 output_size  = 10
 epochs       = 2
+batch_size = 32
+learning_rate = 0.1
+
 
 #Declare weights and biases list
 weights = []
@@ -35,12 +39,13 @@ def softmax(logits):
 #For all epochs
 for epoch in range(epochs):
 
-    print(f"Epoch {epoch}")
+    print(f"Epoch {epoch +1}")
 
     index = 0
+    shuffled_train = ds["train"].shuffle(seed=epoch)
 
     #For each example in the training set
-    for example in ds["train"]:
+    for example in shuffled_train:
         
         index += 1
         if index % 1000 == 0:
@@ -72,8 +77,6 @@ for epoch in range(epochs):
         one_hot = np.zeros(10)
         one_hot[example["label"]] = 1.0
         one_hot = one_hot.reshape(1, -1)
-
-        learning_rate = 0.1
 
         # delta for output layer: predicted - actual
         delta = activations[-1] - one_hot
