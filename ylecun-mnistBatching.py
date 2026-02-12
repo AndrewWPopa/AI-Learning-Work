@@ -8,7 +8,7 @@ ds = load_dataset("ylecun/mnist")
 # Note: increasing layer number will cause accuracy to drop to 9.74% (Random)
 input_size      = 784
 output_size     = 10
-epochs          = 1
+epochs          = 3
 batch_size      = 32
 learning_rate   = 0.1
 layer_array     = [10]
