@@ -1,29 +1,29 @@
 import numpy as np
 from datasets import load_dataset
+import time
+import json
 
 ds = load_dataset("ylecun/mnist")
 
 # Note: increasing layer number will cause accuracy to drop to 9.74% (Random)
-input_size   = 784
-hidden_size  = 10
-n_hidden     = 2
-output_size  = 10
-epochs       = 2
-batch_size = 32
-learning_rate = 0.1
+input_size      = 784
+output_size     = 10
+epochs          = 1
+batch_size      = 32
+learning_rate   = 0.1
+layer_array     = [10]
 
-#Declare weights and biases list
+# Declare weights and biases list
 weights = []
 biases = []
 
-#Input first hidden layer
-weights.append(np.random.randn(input_size, hidden_size) * 0.01)
-biases.append(np.zeros(hidden_size))
+# Concat input size and output size into layer_array
+layer_size = [input_size] + layer_array + [output_size]
 
-#Hidden layer next hidden layer (24 more times)
-for _ in range(n_hidden - 1):
-    weights.append(np.random.randn(hidden_size, hidden_size) * 0.1)
-    biases.append(np.zeros(hidden_size))
+# Hidden layer next hidden layer (n_hidden amount of times)
+for _ in range(len(layer_size) - 1):
+    weights.append(np.random.randn(layer_size[_], layer_size[_+1]) * 0.1)
+    biases.append(np.zeros(layer_size[_+1]))
 
 def sigmoid(z):
     return 1 / (1 + np.exp(-z))
@@ -35,34 +35,43 @@ def softmax(logits):
     exp_logits = np.exp(logits - np.max(logits, axis=-1, keepdims=True))
     return exp_logits / np.sum(exp_logits, axis=-1, keepdims=True)
 
-#For all epochs
-for epoch in range(epochs):
+# Total time metric
+totalStartTime = time.time()
 
+# For all epochs
+for epoch in range(epochs):
+    epochStartTime = time.time()
     print(f"Epoch {epoch +1}")
 
+    # Array's for images and labels
     batch_images = []
     batch_labels = []
     index = 0
 
+    # Shuffled training data, with random seed as epoch counter
     shuffled_train = ds["train"].shuffle(seed=epoch)    
     for example in shuffled_train:
 
+        # Flatten image into array and retrieve output value from example
         img = np.array(example["image"]).flatten() / 255.0
         label = example["label"]
         
+        # Add the image and label of image to batch
         batch_images.append(img)
         batch_labels.append(label)
         index += 1
         
+        # If batch has reached the size of the defined batch size, or the batch has reached the training data final index
         if len(batch_images) == batch_size or index == len(ds["train"]):
+        
             # Convert to matrices
-            X = np.stack(batch_images)                  # (batch, 784)
+            X = np.stack(batch_images)
             y = np.zeros((len(batch_images), 10))
             y[np.arange(len(batch_images)), batch_labels] = 1.0
             
             # Forward pass
             activations = [X]
-            logits_list = []   # optional kept for clarity but not strictly needed
+            logits_list = []
             current = X
             
             for layer_idx in range(len(weights)):
@@ -83,8 +92,10 @@ for epoch in range(epochs):
             for layer_idx in reversed(range(len(weights))):
                 a_prev = activations[layer_idx]
                 
-                dW = a_prev.T @ delta / batch_size      # important: average gradient
-                db = np.mean(delta, axis=0)             # average instead of reshape
+                # Average of the gradient
+                dW = a_prev.T @ delta / batch_size
+                # Average instead of reshape
+                db = np.mean(delta, axis=0)
                 
                 weights[layer_idx] -= learning_rate * dW
                 biases[layer_idx] -= learning_rate * db
@@ -99,13 +110,19 @@ for epoch in range(epochs):
             if index % 5000 < batch_size:
                 print(f"Processed {index} examples")
 
-#Evaluation on test set
+    epochEndTime = time.time();
+    print(f"Time: {epochEndTime - epochStartTime:.3f} seconds")
+
+totalEndTime = time.time()
+print(f"Total time: {totalEndTime - totalStartTime:.3f} seconds ")
+
+# Evaluation on test set
 correct = 0
 total = 0
 for example in ds["test"]:
     total += 1
 
-    # forward pass only (same logic as training forward pass), just logits and activations not needed
+    # Forward pass only (same logic as training forward pass), just logits and activations not needed
     inputValue = (np.array(example["image"]).flatten() / 255.0).reshape(1, 784)
     for layer_idx in range(len(weights)):
         logit = inputValue @ weights[layer_idx] + biases[layer_idx]
@@ -114,15 +131,30 @@ for example in ds["test"]:
         else:
             inputValue = softmax(logit)
 
-    # predicted label is the largest of the softmax output
+    # Predicted label is the largest of the softmax output
     predicted_label = int(np.argmax(inputValue, axis=-1)[0])
     actual_label = int(example["label"])
 
-    # update counters
+    # Update counters
     if predicted_label == actual_label:
         correct += 1
 
-# final percentages
+# Save the weights and biases in .npz format
+np.savez(
+    "mnist_model.npz",
+    weights=np.array(weights, dtype=object),
+    biases=np.array(biases, dtype=object)
+)
+
+# Save the weights and biases in .json format
+model_data = {
+    "weights": [w.tolist() for w in weights],
+    "biases": [b.tolist() for b in biases]
+}
+with open("model.json", "w") as f:
+    json.dump(model_data, f)
+
+# Final percentages
 percent_correct = (correct / total) * 100.0 if total else 0.0
 percent_incorrect = 100.0 - percent_correct
 

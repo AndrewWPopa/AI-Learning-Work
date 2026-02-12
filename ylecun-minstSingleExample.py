@@ -84,7 +84,7 @@ for epoch in range(epochs):
         for layer_idx in reversed(range(len(weights))):
             # activation of previous layer (1, prev_size)
             a_prev = activations[layer_idx]
-            # (prev_size, 1) @ (1, cur_size) -> (prev_size, cur_size)
+            # (prev_size, 1) @ (1, cur_size) to (prev_size, cur_size)
             dW = a_prev.T @ delta
             # shape (cur_size,)
             db = delta.reshape(-1)
