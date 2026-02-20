@@ -25,11 +25,13 @@ class DigitDrawer:
         tk.Button(f, text="Clear", command=self.clear, width=10).pack(side="left", padx=5)
         tk.Button(f, text="Send", command=self.send, width=10).pack(side="left", padx=5)
 
+        # Label to show prediction result
         self.pred = tk.Label(self.root, text="Prediction: –", font=("Arial", 18))
         self.pred.pack(pady=10)
         self.status = tk.Label(self.root, text="Draw digit (black on white)")
         self.status.pack()
 
+        # Change port to whichever is in Arduino IDE
         self.port = "COM6"
         self.root.mainloop()
 
@@ -52,6 +54,8 @@ class DigitDrawer:
     def send(self):
         self.status.config(text="Sending...")
         self.root.update()
+
+        # Resize image to 28x28 and convert to pixel values
         small = self.pil.resize((28, 28), Image.LANCZOS)
         pixels = [255 - small.getpixel((x, y)) for y in range(28) for x in range(28)]
         try:
